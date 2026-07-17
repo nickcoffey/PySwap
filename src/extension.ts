@@ -6,6 +6,19 @@ interface IEnvironmentPath {
   path: string;
 }
 
+interface IInterpreterSettingObject {
+  name: string;
+  path: string;
+}
+
+type IInterpreterSetting = string | IInterpreterSettingObject;
+
+interface IInterpreterOption {
+  label: string;
+  description?: string;
+  path: string;
+}
+
 interface IPythonEnvironmentApi {
   environments: {
     updateActiveEnvironmentPath(
@@ -33,17 +46,36 @@ async function getPythonApi(): Promise<IPythonEnvironmentApi | undefined> {
   return extension.exports as IPythonEnvironmentApi;
 }
 
+function toInterpreterOption(
+  interpreter: IInterpreterSetting,
+): IInterpreterOption {
+  if (typeof interpreter === "string") {
+    return {
+      label: interpreter,
+      path: interpreter,
+    };
+  }
+
+  return {
+    label: interpreter.name,
+    description: interpreter.path,
+    path: interpreter.path,
+  };
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     "pyswap.select",
     async () => {
       const config = vscode.workspace.getConfiguration("pyswap");
-      const interpreters: string[] = config.get<string[]>(
+      const interpreters = config.get<IInterpreterSetting[]>(
         "interpreterPaths",
         [],
       );
 
-      if (interpreters.length === 0) {
+      const interpreterOptions = interpreters.map(toInterpreterOption);
+
+      if (interpreterOptions.length === 0) {
         vscode.window.showWarningMessage(
           "No interpreter paths configured. " +
             'Add paths to "pyswap.interpreterPaths" in your settings.json.',
@@ -51,8 +83,8 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      // Show Quick Pick
-      const selected = await vscode.window.showQuickPick(interpreters, {
+      const selected = await vscode.window.showQuickPick(interpreterOptions, {
+        matchOnDescription: true,
         placeHolder: "Select a Python interpreter",
       });
 
@@ -69,11 +101,13 @@ export function activate(context: vscode.ExtensionContext) {
       try {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
         await pythonApi.environments.updateActiveEnvironmentPath(
-          selected,
+          selected.path,
           workspaceFolder,
         );
         vscode.window.showInformationMessage(
-          `Python interpreter set to: ${selected}`,
+          selected.description
+            ? `Python interpreter set to: ${selected.label} (${selected.description})`
+            : `Python interpreter set to: ${selected.label}`,
         );
       } catch (err: any) {
         vscode.window.showErrorMessage(
