@@ -14,10 +14,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "pyswap.helloWorld",
-        "title": "Hello World"
+        "command": "pyswap.select",
+        "title": "PySwap: Select Python Interpreter from List"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "PySwap",
+      "properties": {
+        "pyswap.interpreterPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "List of Python interpreter paths to choose from."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

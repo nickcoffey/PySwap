@@ -1,26 +1,51 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  const disposable = vscode.commands.registerCommand(
+    "pyswap.select",
+    async () => {
+      // Read the list of interpreter paths from settings
+      const config = vscode.workspace.getConfiguration("pyswap");
+      const interpreters: string[] = config.get<string[]>(
+        "interpreterPaths",
+        [],
+      );
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "pyswap" is now active!');
+      if (interpreters.length === 0) {
+        vscode.window.showWarningMessage(
+          "No interpreter paths configured. " +
+            'Add paths to "pyswap.interpreterPaths" in your settings.json.',
+        );
+        return;
+      }
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('pyswap.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from PySwap!');
-	});
+      // Show a Quick Pick with available interpreters
+      const selected = await vscode.window.showQuickPick(interpreters, {
+        placeHolder: "Select a Python interpreter",
+      });
 
-	context.subscriptions.push(disposable);
+      if (!selected) {
+        return; // User cancelled
+      }
+
+      // Update the python.defaultInterpreterPath setting (globally or workspace)
+      const pythonConfig = vscode.workspace.getConfiguration("python");
+      await pythonConfig.update(
+        "defaultInterpreterPath",
+        selected,
+        vscode.ConfigurationTarget.Global,
+      );
+
+      // Tell the Python extension to use the new interpreter
+      await vscode.commands.executeCommand("python.setInterpreter", selected);
+
+      vscode.window.showInformationMessage(
+        `Python interpreter set to: ${selected}`,
+      );
+    },
+  );
+
+  context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
