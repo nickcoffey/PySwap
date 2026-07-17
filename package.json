@@ -1,8 +1,12 @@
 {
   "name": "pyswap",
+  "publisher": "nickcoffey",
   "displayName": "PySwap",
   "description": "Quickly swap between Python interpreters from a predefined list, right from the Command Palette. No digging through menus — just pick your snake and go.",
+  "repository": "https://github.com/nickcoffey/PySwap",
+  "icon": "pyswap.png",
   "version": "0.0.1",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.125.0"
   },
