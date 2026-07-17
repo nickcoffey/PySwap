@@ -32,6 +32,9 @@
       }
     }
   },
+  "extensionDependencies": [
+    "ms-python.python"
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",

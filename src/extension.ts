@@ -1,10 +1,42 @@
 import * as vscode from "vscode";
 
+// Type definitions for the Python extension's public API
+interface IEnvironmentPath {
+  id: string;
+  path: string;
+}
+
+interface IPythonEnvironmentApi {
+  environments: {
+    updateActiveEnvironmentPath(
+      path: string,
+      resource?: vscode.Uri,
+    ): Promise<void>;
+    getActiveEnvironmentPath(resource?: vscode.Uri): IEnvironmentPath;
+  };
+}
+
+/**
+ * Activates the ms-python.python extension and returns its API.
+ */
+async function getPythonApi(): Promise<IPythonEnvironmentApi | undefined> {
+  const extension = vscode.extensions.getExtension("ms-python.python");
+  if (!extension) {
+    vscode.window.showErrorMessage(
+      "The Microsoft Python extension is not installed.",
+    );
+    return undefined;
+  }
+  if (!extension.isActive) {
+    await extension.activate();
+  }
+  return extension.exports as IPythonEnvironmentApi;
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     "pyswap.select",
     async () => {
-      // Read the list of interpreter paths from settings
       const config = vscode.workspace.getConfiguration("pyswap");
       const interpreters: string[] = config.get<string[]>(
         "interpreterPaths",
@@ -19,29 +51,35 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      // Show a Quick Pick with available interpreters
+      // Show Quick Pick
       const selected = await vscode.window.showQuickPick(interpreters, {
         placeHolder: "Select a Python interpreter",
       });
 
       if (!selected) {
-        return; // User cancelled
+        return;
       }
 
-      // Update the python.defaultInterpreterPath setting (globally or workspace)
-      const pythonConfig = vscode.workspace.getConfiguration("python");
-      await pythonConfig.update(
-        "defaultInterpreterPath",
-        selected,
-        vscode.ConfigurationTarget.Global,
-      );
+      // Use the Python extension's API to set the interpreter silently
+      const pythonApi = await getPythonApi();
+      if (!pythonApi) {
+        return;
+      }
 
-      // Tell the Python extension to use the new interpreter
-      await vscode.commands.executeCommand("python.setInterpreter", selected);
-
-      vscode.window.showInformationMessage(
-        `Python interpreter set to: ${selected}`,
-      );
+      try {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+        await pythonApi.environments.updateActiveEnvironmentPath(
+          selected,
+          workspaceFolder,
+        );
+        vscode.window.showInformationMessage(
+          `Python interpreter set to: ${selected}`,
+        );
+      } catch (err: any) {
+        vscode.window.showErrorMessage(
+          `Failed to set interpreter: ${err.message}`,
+        );
+      }
     },
   );
 
