@@ -63,7 +63,76 @@ function toInterpreterOption(
   };
 }
 
+function getWorkspaceResource(): vscode.Uri | undefined {
+  return (
+    vscode.window.activeTextEditor?.document.uri ??
+    vscode.workspace.workspaceFolders?.[0]?.uri
+  );
+}
+
+function getInterpreterDisplayName(
+  activePath: string,
+  interpreters: IInterpreterOption[],
+): string {
+  const match = interpreters.find(
+    (interpreter) => interpreter.path === activePath,
+  );
+
+  if (!match) {
+    return activePath;
+  }
+
+  return match.label;
+}
+
 export function activate(context: vscode.ExtensionContext) {
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100,
+  );
+  statusBarItem.command = "pyswap.select";
+  context.subscriptions.push(statusBarItem);
+
+  const refreshStatusBar = async () => {
+    const config = vscode.workspace.getConfiguration("pyswap");
+    const interpreters = config
+      .get<IInterpreterSetting[]>("interpreterPaths", [])
+      .map(toInterpreterOption);
+
+    if (interpreters.length === 0) {
+      statusBarItem.text = "$(python) PySwap";
+      statusBarItem.tooltip =
+        "No interpreter paths configured for PySwap. Open the command to pick one.";
+      statusBarItem.show();
+      return;
+    }
+
+    const pythonApi = await getPythonApi();
+    if (!pythonApi) {
+      statusBarItem.text = "$(python) PySwap";
+      statusBarItem.tooltip =
+        "The Microsoft Python extension is not installed.";
+      statusBarItem.show();
+      return;
+    }
+
+    const activeEnvironment = pythonApi.environments.getActiveEnvironmentPath(
+      getWorkspaceResource(),
+    );
+    const activeInterpreterLabel = getInterpreterDisplayName(
+      activeEnvironment.path,
+      interpreters,
+    );
+    const activeInterpreterPath =
+      interpreters.find(
+        (interpreter) => interpreter.path === activeEnvironment.path,
+      )?.path ?? activeEnvironment.path;
+
+    statusBarItem.text = `$(python) ${activeInterpreterLabel}`;
+    statusBarItem.tooltip = `Active Python interpreter: ${activeInterpreterLabel}\n${activeInterpreterPath}`;
+    statusBarItem.show();
+  };
+
   const disposable = vscode.commands.registerCommand(
     "pyswap.select",
     async () => {
@@ -99,7 +168,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       try {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+        const workspaceFolder = getWorkspaceResource();
         await pythonApi.environments.updateActiveEnvironmentPath(
           selected.path,
           workspaceFolder,
@@ -109,6 +178,7 @@ export function activate(context: vscode.ExtensionContext) {
             ? `Python interpreter set to: ${selected.label} (${selected.description})`
             : `Python interpreter set to: ${selected.label}`,
         );
+        await refreshStatusBar();
       } catch (err: any) {
         vscode.window.showErrorMessage(
           `Failed to set interpreter: ${err.message}`,
@@ -118,6 +188,21 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(disposable);
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("pyswap.interpreterPaths")) {
+        void refreshStatusBar();
+      }
+    }),
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      void refreshStatusBar();
+    }),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      void refreshStatusBar();
+    }),
+  );
+
+  void refreshStatusBar();
 }
 
 export function deactivate() {}
