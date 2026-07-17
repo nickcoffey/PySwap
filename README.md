@@ -1,71 +1,105 @@
-# pyswap README
+# PySwap
 
-This is the README for your extension "pyswap". After writing up a brief description, we recommend including the following sections.
+PySwap is a small VS Code extension for switching between Python interpreters from a curated list. It keeps the workflow simple: configure the interpreters you want to use, pick one from the Command Palette, and PySwap updates the active Python environment for the current workspace.
+
+It also shows the current active interpreter in the status bar so you can see what is selected at a glance.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- Pick from a predefined list of Python interpreters with a quick picker.
+- Store interpreter entries as plain paths or as named objects with a display name.
+- Show the active interpreter in the status bar.
+- Display the configured name when available, otherwise fall back to the interpreter path.
+- Click the status bar item to open the interpreter picker again.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+PySwap depends on the Microsoft Python extension.
+
+- Install: `ms-python.python`
+- VS Code version: `^1.125.0` or newer
+
+PySwap is designed for workspaces where you already know which interpreters you want to use. It does not discover environments automatically.
+
+## Getting Started
+
+1. Install the Microsoft Python extension.
+2. Install PySwap.
+3. Add one or more interpreter entries to your settings.
+4. Open the Command Palette and run `PySwap: Select Python Interpreter from List`.
+
+The status bar item updates automatically when the active interpreter changes.
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+PySwap contributes the following setting:
 
-For example:
+- `pyswap.interpreterPaths`: List of interpreter entries to show in the picker.
 
-This extension contributes the following settings:
+This setting accepts either plain strings or objects with a friendly name and path.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+### Example: plain paths
+
+```json
+{
+  "pyswap.interpreterPaths": [
+    "/Users/nick/.pyenv/versions/3.12.4/bin/python",
+    "/Users/nick/.venv/project-a/bin/python"
+  ]
+}
+```
+
+### Example: named entries
+
+```json
+{
+  "pyswap.interpreterPaths": [
+    {
+      "name": "Project A",
+      "path": "/Users/nick/.venv/project-a/bin/python"
+    },
+    {
+      "name": "Python 3.12",
+      "path": "/Users/nick/.pyenv/versions/3.12.4/bin/python"
+    }
+  ]
+}
+```
+
+## How the Status Bar Works
+
+PySwap reads the active interpreter from the Microsoft Python extension and compares it against your configured list.
+
+- If the active path matches a named entry, the status bar shows the name.
+- If the active path matches a plain string entry, the status bar shows the path.
+- If the active path is not in your list, PySwap shows the raw path.
+
+## Command
+
+- `PySwap: Select Python Interpreter from List`
+
+This command opens a picker containing your configured entries and applies the selected interpreter to the current workspace.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- PySwap only works with interpreters you add to `pyswap.interpreterPaths`.
+- If the Microsoft Python extension is missing, PySwap cannot read or update the active interpreter.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+- Initial release with interpreter selection, named entries, and a status bar indicator.
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
+If you want to extend PySwap, the main entry points are:
 
-Fixed issue #.
+- [src/extension.ts](src/extension.ts)
+- [package.json](package.json)
 
-### 1.1.0
+The extension is intentionally small, so changes to the picker, configuration schema, and status bar behavior are all in one place.
 
-Added features X, Y, and Z.
+## License
 
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This project does not currently include a license file. Add one before publishing if you plan to distribute the extension publicly.
